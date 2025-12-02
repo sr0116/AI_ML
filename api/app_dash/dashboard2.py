@@ -1,0 +1,147 @@
+import flask
+from dash import Dash, html, dcc, Input, Output
+from .graphql_client import fetch_sales_view_all
+from .modules.cards import bring_card_data
+from .modules.year_bar import year_bar_graph
+from .modules.year_month_line import year_month_line_graph
+
+flask_app = flask.Flask(__name__)
+
+dash_app = Dash(
+    __name__,
+    server=flask_app,
+    requests_pathname_prefix="/dashboard/",
+    suppress_callback_exceptions=True,
+)
+
+def card_style():
+    return {
+        "flex": "1",
+        "margin": "0 10px",
+        "padding": "20px",
+        "backgroundColor": "#F8F9FA",
+        "borderRadius": "10px",
+        "boxShadow": "0 2px 6px rgba(0,0,0,0.15)",
+        "textAlign": "center",
+    }
+
+
+dash_app.layout = html.Div(
+    style={"padding": "20px"},
+    children=[
+        html.H2("매출 분석 대시보드", style={"textAlign": "center"}),
+        html.Div(
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
+            children=[
+                html.Div(id="card_total_sales", style=card_style(),  children =[html.H4('총매출액')]),
+                html.Div(id="card_total_profit", style=card_style(), children =[html.H4('전체 순이익')]),
+                html.Div(id="card_total_customers", style=card_style(),children =[html.H4('총 고객수')]),
+                html.Div(id="card_total_qnty", style=card_style(), children =[html.H4('총 판매수량')])
+            ]
+        ),
+        html.Div(
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
+            children=[
+                html.Div(
+                    dcc.Graph(id="chart-year-bar"),
+                    style={"flex": "1", "height": "380px"},
+                ),
+                html.Div(
+                    dcc.Graph(id="chart-year-line"),
+                    style={"flex": "1", "height": "380px"},
+                ),
+            ]
+        ),
+        html.Div(
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
+            children=[
+                dcc.Dropdown(
+                    id="region-filter",
+                    options=[],
+                    value=None,
+                    placeholder="지역 선택(미선택 시 전체)",
+                    clearable=True,
+                    style={
+                        "width": '60%',
+                        "fontSize": "12px",
+                        "marginLeft": "auto",
+                    }
+                )
+            ]
+        ),
+        html.Div(
+            dcc.Graph(id="region-chart",
+                      style={
+                          "width": "100%",
+                          "height": "100%"
+                     },
+            ),
+            style={
+                "display": "flex",
+                "justifyContent": "flex-end",
+                "marginBottom": "6px",
+                "width": "100%",
+            },
+
+        )
+    ]
+)
+
+import plotly.express as px
+
+# Output: return, Input: parameter
+@dash_app.callback(
+    [
+        Output("card_total_sales", "children"),
+        Output("card_total_profit", "children"),
+        Output("card_total_customers", "children"),
+        Output("card_total_qnty", "children"),
+        Output("chart-year-bar", "figure"),
+        Output("chart-year-line", "figure"),
+        Output("region-filter", "options"),
+        Output("region-chart", "figure"),
+    ],
+    [
+        Input("region-filter", "value"),
+     ]
+)
+def update_dashboard(selected_region):
+    df = fetch_sales_view_all()
+    region_options = [{"label": region, "value": region}
+                      for region in df["region"].drop_duplicates().tolist()]
+
+    sigungu_group = df[df["region"] == selected_region]\
+            .groupby("sigungu",as_index=False)["salesAmount"].sum()
+
+    fig_bar_region =  px.bar(
+        sigungu_group,
+        x="sigungu",
+        y="salesAmount",
+    )
+
+    cardData = bring_card_data(df)
+    fig_bar_year = year_bar_graph(df)
+    fig_line_year = year_month_line_graph(df)
+
+    return (
+        [html.H4("총매출액"), html.H2(f"{cardData['total_sales']:,}원")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_profit']:,}원")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_customers']}명")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_qnty']}건수")],
+        fig_bar_year,
+        fig_line_year,
+        region_options,
+        fig_bar_region
+    )

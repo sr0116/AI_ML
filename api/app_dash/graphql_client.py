@@ -27,10 +27,20 @@ def fetch_sales_view_all(limit: int = 20000) -> pd.DataFrame:
         }
         """
 
-    resp = requests.post(url, json={'query': query, 'variables': {'limit': 1000}})
+    resp = requests.post(url, json={'query': query, 'variables': {'limit': limit}})
     data = resp.json()
     # sales_view_json = data.get("data").get("salesViewAll") // 여러 방식으로 사용 가능
     sales_view_json = data["data"]["salesViewAll"]
     df = pd.DataFrame(sales_view_json)
     print(df)
     return df
+
+# tolist()[0]
+if __name__ == '__main__':
+    df = fetch_sales_view_all()
+    # df.info, duplicated
+    # regions = df["region"].drop().duplicated().tolist()
+    # print(regions)
+
+    data  = df[df["reason"] == "서울"]
+    print(data.shape)
