@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
 import pickle as pkl
+
+from sklearn.datasets import load_iris
 from sklearn.decomposition import TruncatedSVD  # 제일 많이 사용
 from scipy.sparse.linalg import svds
+from sklearn.preprocessing import StandardScaler
 
 # df = pd.read_csv('data/ratings.dat', sep='::', engine='python')
 # print(df)
@@ -32,24 +35,38 @@ from scipy.sparse.linalg import svds
 # df.fillna(means, inplace=True)
 # df.to_pickle('data/rating_pivot_means.pkl')
 
+
+# iris = load_iris()
+# X = iris.data
+# X_scaled = StandardScaler().fit_transform(X)  # 표준 정규 분포
+#
+# # 공분산
+# X_col_cov = X_scaled.T @ X_scaled
+# X_row_cov = X_scaled @ X_scaled.T
+# col_eigenvalues, col_eigenvectors = np.linalg.eig(X_col_cov)
+# row_eigenvalues, row_eigenvectors = np.linalg.eig(X_row_cov)
+# #  고유값 (총 4개 나옴) - 작은 쪽에 수렴하게 됨
+# print(col_eigenvalues)
+# print(row_eigenvalues)'
+
+# 정규화를 하는 방법
+# 통계적 거리를 계산하면 된다.
 if __name__ == '__main__':
     # 행렬이니까 X
     X = pd.read_pickle('data/rating_pivot_means.pkl').values
-    # np.linalg.svd(X, full_matrices=False)
-    # U, S, VT = np.linalg.svd(df, full_matrices=False)
-    # svd = TruncatedSVD(n_components=2)
-    # A_reduced = svd.fit_transform(X)
-    # print(A_reduced.shape)
+    np.linalg.svd(X, full_matrices=False)
+    U, S, VT = svds(X, full_matruces=False)  # 5차원으로
 
-    U, S, VT = svds(X, k=5)  # 5차원으로
+    svd = TruncatedSVD(n_components=2)
+    A_reduced = svd.fit_transform(X)
+    print(A_reduced.shape)
+
     D = np.diag(S)
     print(D) # 대각 행렬로
     print(S.shape)
-
-    #  새로운 x의 레이팅 (이게 새로운 피벗 테이블)
+    # #  새로운 x의 레이팅 (이게 새로운 피벗 테이블)
     X_new_ratings = U@D@VT
     print(X_new_ratings)
-
 
     #     (69878, 10677)
     # (69878, 5)
