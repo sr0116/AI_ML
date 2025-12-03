@@ -1,14 +1,14 @@
 import flask
 from dash import Dash, html, dcc, Input, Output
-import plotly.express as px
 from plotly.express import treemap
 
 from .graphql_client import fetch_sales_view_all
 from .modules.cards import bring_card_data
+from .modules.category_product_treemap import category_product_treemap_graph
 from .modules.year_bar import year_bar_graph
 from .modules.year_month_line import year_month_line_graph
+from .modules.region_sigungu_bar import region_sigungu_bar_graph
 
-# Flask & Dash
 flask_app = flask.Flask(__name__)
 
 dash_app = Dash(
@@ -19,7 +19,6 @@ dash_app = Dash(
 )
 
 
-# 카드 스타일
 def card_style():
     return {
         "flex": "1",
@@ -32,104 +31,131 @@ def card_style():
     }
 
 
-# Layout
 dash_app.layout = html.Div(
     style={"padding": "20px"},
     children=[
-
-        # 제목
         html.H2("매출 분석 대시보드", style={"textAlign": "center"}),
-
-        # 카드 4개
         html.Div(
-            style={"display": "flex", "justifyContent": "space-between", "marginBottom": "30px"},
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
             children=[
-                html.Div(id="card_total_sales", style=card_style(), children=[html.H4("총매출액")]),
-                html.Div(id="card_total_profit", style=card_style(), children=[html.H4("전체 순이익")]),
-                html.Div(id="card_total_customers", style=card_style(), children=[html.H4("총 고객수")]),
-                html.Div(id="card_total_qnty", style=card_style(), children=[html.H4("총 판매수량")]),
+                html.Div(id="card_total_sales", style=card_style(), children=[html.H4('총매출액')]),
+                html.Div(id="card_total_profit", style=card_style(), children=[html.H4('전체 순이익')]),
+                html.Div(id="card_total_customers", style=card_style(), children=[html.H4('총 고객수')]),
+                html.Div(id="card_total_qnty", style=card_style(), children=[html.H4('총 판매수량')])
             ]
         ),
 
-        # 연도별 매출 + 월별 매출 그래프
         html.Div(
-            style={"display": "flex", "justifyContent": "space-between", "marginBottom": "30px"},
-            children=[
-                html.Div(dcc.Graph(id="chart-year-bar"), style={"flex": "1", "height": "380px"}),
-                html.Div(dcc.Graph(id="chart-year-line"), style={"flex": "1", "height": "380px"}),
-            ]
-        ),
-        html.Div(
+            style={
+                "display": "flex",
+                "justifyContent": "space-between",
+                "marginBottom": "30px",
+            },
             children=[
                 html.Div(
-                    children=[
-                        # 지역 선택 필터
-                        html.Div(
-                            style={"display": "flex", "justifyContent": "space-between", "marginBottom": "30px"},
-                            children=[
-                                dcc.Dropdown(
-                                    id="region-filter",
-                                    options=[],  # 콜백에서 채워짐
-                                    value=None,
-                                    placeholder="지역 선택(미선택 시 전체)",
-                                    clearable=True,
-                                    style={"width": "60%", "fontSize": "12px", "marginLeft": "auto"},
-                                )
-                            ]
-                        ),
-
-                        # 시군구 그래프
-                        html.Div(
-                            dcc.Graph(id="region-sigungu-chart", style={"width": "100%", "height": "100%"}),
-                            style={
-                                "display": "flex",
-                                "justifyContent": "flex-end",
-                                "marginBottom": "6px",
-                                "width": "100%",
-                            },
-                        ),
-                    ]
+                    dcc.Graph(id="chart-year-bar"),
+                    style={"flex": "1", "height": "380px"},
                 ),
                 html.Div(
-                    children=[
-                        # 지역 선택 필터
-                        html.Div(
-                            style={"display": "flex", "justifyContent": "space-between", "marginBottom": "30px"},
-                            children=[
-                                dcc.Dropdown(
-                                    id="category-filter",
-                                    options=[
-                                        {"label": "제품", "value": "productName"},
-                                        {"label": "제품분류", "value": "productCategoryName"},
-                                        {"label": "대분류", "value": "categoryName"},
-                                    ],  # 콜백에서 채워짐
-                                    value=None,
-                                    placeholder="지역 선택(미선택 시 전체)",
-                                    clearable=True,
-                                    style={"width": "60%", "fontSize": "12px", "marginLeft": "auto"},
-                                )
-                            ]
-                        ),
-
-                        # 시군구 그래프
-                        html.Div(
-                            dcc.Graph(id="category-treemap", style={"width": "100%", "height": "100%"}),
-                            style={
-                                "display": "flex",
-                                "justifyContent": "flex-end",
-                                "marginBottom": "6px",
-                                "width": "100%",
-                            },
-                        ),
-                    ]
+                    dcc.Graph(id="chart-year-line"),
+                    style={"flex": "1", "height": "380px"},
                 ),
             ]
         ),
+        html.Div(
+            style={
+                "display": "flex",
+                "flexDirection": "row",  # ⬅ 좌우 2개 섹션으로 배치
+                "gap": "20px",
+                "width": "100%",
+            },
+            children=[
+
+                # ============================================
+                # 왼쪽: 지역 슬라이스 + Bar 그래프
+                # ============================================
+                html.Div(
+                    style={
+                        "flex": "1",
+                        "display": "flex",
+                        "flexDirection": "column",  # 슬라이스 위, 그래프 아래
+                        "gap": "10px",
+                    },
+                    children=[
+                        # 지역 슬라이스
+                        dcc.Dropdown(
+                            id="region-filter",
+                            options=[],
+                            value="서울",
+                            placeholder="지역 선택(미선택 시 전체)",
+                            clearable=True,
+                            style={
+                                "width": "100%",
+                                "fontSize": "12px",
+                            },
+                        ),
+
+                        # Bar 그래프
+                        dcc.Graph(
+                            id="region-sigungu-chart",
+                            style={
+                                "width": "100%",
+                                "height": "400px",
+                            },
+                        ),
+                    ],
+                ),
+
+                # ============================================
+                # 오른쪽: 분류 슬라이스 + Treemap
+                # ============================================
+                html.Div(
+                    style={
+                        "flex": "1",
+                        "display": "flex",
+                        "flexDirection": "column",  # 슬라이스 위, 트리맵 아래
+                        "gap": "10px",
+                    },
+                    children=[
+                        # 분류 슬라이스
+                        dcc.Dropdown(
+                            id="category-filter",
+                            options=[
+                                {"label": "제품", "value": "productName"},
+                                {"label": "제품분류", "value": "productCategoryName"},
+                                {"label": "대분류", "value": "categoryName"},
+                            ],
+                            value="categoryName",
+                            placeholder="카테고리 선택(미선택 시 전체)",
+                            clearable=True,
+                            style={
+                                "width": "100%",
+                                "fontSize": "12px",
+                            },
+                        ),
+
+                        # Treemap 그래프
+                        dcc.Graph(
+                            id="category-treemap",
+                            style={
+                                "width": "100%",
+                                "height": "400px",
+                            },
+                        ),
+                    ],
+                ),
+            ],
+        )
 
     ]
 )
 
 
+# Output: return, Input: parameter
 @dash_app.callback(
     [
         Output("card_total_sales", "children"),
@@ -141,127 +167,31 @@ dash_app.layout = html.Div(
         Output("region-filter", "options"),
         Output("region-sigungu-chart", "figure"),
         Output("category-filter", "options"),
-        Output("category-treemap", "figure"),
+        Output("category-treemap", "figure")
     ],
     [
         Input("region-filter", "value"),
-        Input("category-filter", "value"),
-    ],
+        Input("category-filter", "value")
+    ]
 )
 def update_dashboard(selected_region, selected_category):
     df = fetch_sales_view_all()
 
-    # 카드 데이터 계산
-    cards = bring_card_data(df)
-
-    # 연도별 시각화
-    fig_bar = year_bar_graph(df)
-    fig_line = year_month_line_graph(df)
-
-    # 지역 옵션
-    region_options = [
-        {"label": r, "value": r}
-        for r in df["region"].drop_duplicates()
-    ]
-
-    # 지역 필터 적용
-    region_df = df[df["region"] == selected_region] if selected_region else df
-
-    # 시군구 집계
-    sigungu_group = (
-        region_df.groupby("sigungu", as_index=False)["salesAmount"]
-        .sum()
-        .sort_values("salesAmount", ascending=False)
-    )
-
-    # 시군구 그래프
-    fig_region = px.bar(
-        sigungu_group,
-        x="sigungu",
-        y="salesAmount",
-        title=f"{selected_region or '전체'} 시군구별 매출"
-    )
-
-    # 카테고리 옵션(고정)
-    category_options = [
-        {"label": "제품", "value": "productName"},
-        {"label": "제품분류", "value": "productCategoryName"},
-        {"label": "대분류", "value": "categoryName"},
-    ]
-
-    # 카테고리 트리맵 (계층형)
-
-    # 선택값에 따라 트리맵 단계 자동 결정
-    if selected_category == "categoryName":
-        # 1단계 : 대분류만
-        treemap_label = "대분류"
-        path = ["categoryName"]
-        treemap_df = (
-            df.groupby(path, as_index=False)["salesAmount"]
-            .sum()
-            .sort_values("salesAmount", ascending=False)
-        )
-
-    elif selected_category == "productCategoryName":
-        # 2단계 : 대분류 → 제품분류
-        treemap_label = "제품분류"
-        path = ["categoryName", "productCategoryName"]
-        treemap_df = (
-            df.groupby(path, as_index=False)["salesAmount"]
-            .sum()
-            .sort_values("salesAmount", ascending=False)
-        )
-
-    else:
-        # 3단계 : 대분류 → 제품분류 → 제품
-        treemap_label = "제품"
-        path = ["categoryName", "productCategoryName", "productName"]
-        treemap_df = (
-            df.groupby(path, as_index=False)["salesAmount"]
-            .sum()
-            .sort_values("salesAmount", ascending=False)
-        )
-
-    # 트리맵 색상 (저채도 팔레트 적용)
-
-    custom_colorscale = [
-        [0.0, "rgb(230, 242, 255)"],  # 아주 연한 파랑
-        [0.3, "rgb(198, 221, 245)"],  # 파스텔톤
-        [0.6, "rgb(158, 196, 233)"],  # 중간 블루
-        [1.0, "rgb(104, 158, 209)"],  # 진한 블루
-    ]
-
-    fig_treemap = px.treemap(
-        treemap_df,
-        path=path,
-        values="salesAmount",
-        color="salesAmount",
-        title=f"{treemap_label} 기준 매출 트리맵",
-        color_continuous_scale=custom_colorscale,
-    )
-    fig_treemap.update_traces(
-        texttemplate="%{label}<br>%{value:,}원",
-        hovertemplate="<b>%{label}</b><br>매출: %{value:,}원<extra></extra>"
-    )
-    fig_treemap.update_layout(
-        margin=dict(t=40, l=0, r=0, b=0),
-        font={"size": 12},
-        coloraxis_colorbar=dict(
-            title="매출액",
-            thickness=10,
-            len=0.8
-        )
-    )
+    cardData = bring_card_data(df)
+    fig_bar_year = year_bar_graph(df)
+    fig_line_year = year_month_line_graph(df)
+    region_options, fig_bar_region = region_sigungu_bar_graph(df, selected_region)
+    treemap_option, fig_treemap = category_product_treemap_graph(df, selected_category)
 
     return (
-        [html.H2("총 매출액"), html.H4(f"{cards['total_sales']:,}원")],
-        [html.H2("전체 순이익"), html.H4(f"{cards['total_profit']:,}원")],
-        [html.H2("총 고객수"), html.H4(f"{cards['total_customers']}명")],
-        [html.H2("총 판매수량"), html.H4(f"{cards['total_qnty']}건")],
-        fig_bar,
-        fig_line,
+        [html.H4("총매출액"), html.H2(f"{cardData['total_sales']:,}원")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_profit']:,}원")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_customers']}명")],
+        [html.H4("총매출액"), html.H2(f"{cardData['total_qnty']}건수")],
+        fig_bar_year,
+        fig_line_year,
         region_options,
-        fig_region,
-        category_options,
-        fig_treemap,
+        fig_bar_region,
+        treemap_option,
+        fig_treemap
     )
