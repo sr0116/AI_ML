@@ -14,12 +14,10 @@ def fetch_sales_view_all(limit: int = 20000) -> pd.DataFrame:
             netProfit
             customerName
             quantity
-
-            # 권역별 막대그래프에서 필요한 컬럼
+         
             region
-            sigungu         #  하위 시군구 필드 추가!
+            sigungu        
 
-            #  트리맵용 3단계 계층 컬럼
             productName
             productCategoryName
             categoryName
